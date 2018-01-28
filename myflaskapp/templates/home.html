@@ -4,5 +4,9 @@
   <div class="jumbotron text-center">
     <h1>Welcom to MyFlaskApp</h1>
       <p class="lead">This app was built using the Flask Python framework and YouTube videos by Traversy Media.</p>
+      {% if session.logged_in == NULL %}
+        <a href="/register" class="btn btn-primary btn-lg">Register</a>
+        <a href="/login" class="btn btn-success btn-lg">Log in</a>
+      {% endif %}
   </div>
 {% endblock %}

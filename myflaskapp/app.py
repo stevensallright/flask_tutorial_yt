@@ -2,7 +2,7 @@
 
 from flask import Flask, render_template, flash, redirect, url_for, session, request, logging
 from flask_mysqldb import MySQL
-from data import Articles
+#from data import Articles
 from wtforms import Form, StringField, TextAreaField, PasswordField, validators
 from passlib.hash import sha256_crypt
 from functools import wraps
@@ -25,7 +25,7 @@ mysql = MySQL(app)   # wrap up app variable
 
 
 # read data from data.py
-Articles = Articles()
+#Articles = Articles()
 
 # create a route
 @app.route('/')
@@ -42,13 +42,34 @@ def about():
 # create a route
 @app.route('/articles')
 def articles():
-	return render_template('articles.html', articles=Articles)   # don't use same name for data and html variable, causes error
+	#return render_template('articles.html', articles=Articles)   # don't use same name for data and html variable, causes error
+	# create cursor
+	cur = mysql.connection.cursor()
+
+	# get Articles
+	result = cur.execute("SELECT * FROM articles")
+
+	articles = cur.fetchall()   # returns all results in dictionary form
+
+	if result > 0:
+		return render_template('articles.html', articles=articles)
+	else:
+		msg = 'No articles found'
+		return render_template('articles.html', msg=msg)
 
 
 # create a route for article linke
 @app.route('/article/<string:id>/')   # <> indicates a dynamic value
 def article(id):
-	return render_template('article.html', id=id)
+	# create cursor
+	cur = mysql.connection.cursor()
+
+	# get Articles
+	result = cur.execute("SELECT * FROM articles WHERE id=%s", [id])
+
+	article = cur.fetchone()   # returns all results in dictionary form
+
+	return render_template('article.html', article=article)
 
 
 # use a class to handle forms
@@ -166,8 +187,56 @@ def logout():
 @app.route('/dashboard')
 @is_logged_in   # wrapper that requires user to be logged in to access url
 def dashboard():
-	return render_template('dashboard.html')
 
+	# create cursor
+	cur = mysql.connection.cursor()
+
+	# get Articles
+	result = cur.execute("SELECT * FROM articles")
+
+	articles = cur.fetchall()   # returns all results in dictionary form
+
+	if result > 0:
+		return render_template('dashboard.html', articles=articles)
+	else:
+		msg = 'No articles found'
+		return render_template('dashboard.html')
+
+	# close connection
+	cur.close()
+
+# use a class to add articles, used for adding and editing articles
+class ArticleForm(Form):
+	title = StringField('Title', [validators.Length(min=1, max=200)])
+	body = TextAreaField('Body', [validators.Length(min=30)])
+
+# add article
+@app.route('/add_article', methods=['GET', 'POST'])
+@is_logged_in   # wrapper that requires user to be logged in to access url
+def add_article():
+	form = ArticleForm(request.form)
+	if request.method == 'POST' and form.validate():
+		title = form.title.data
+		body = form.body.data
+
+		# create cursor
+		cur = mysql.connection.cursor()
+
+		# execute
+		cur.execute("INSERT INTO articles(title, body, author) VALUES(%s, %s, %s)",
+			(title, body, session['username']))
+
+		# commit changes to db
+		mysql.connection.commit()
+
+		# close cursor
+		cur.close()
+
+		flash('Article created', 'success')
+
+		return redirect(url_for('dashboard'))
+
+	return render_template('add_article.html', form=form)
 
 # if this condition met this script will be executed
 if __name__ == '__main__':

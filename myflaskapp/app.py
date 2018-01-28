@@ -5,6 +5,7 @@ from flask_mysqldb import MySQL
 from data import Articles
 from wtforms import Form, StringField, TextAreaField, PasswordField, validators
 from passlib.hash import sha256_crypt
+from functools import wraps
 
 # create instance of flask app
 app = Flask(__name__)
@@ -61,7 +62,7 @@ class RegisterForm(Form):
 	])
 	confirm = PasswordField('Confirm password')
 
-# route for form class above
+# user registration
 @app.route('/register', methods=['GET', 'POST'])   # accepts both types of requests
 def register():
 	form = RegisterForm(request.form)   # class form created above
@@ -95,6 +96,77 @@ def register():
 
 	return render_template('register.html', form=form)
 
+
+# user login
+@app.route('/login', methods=['GET', 'POST'])   # because we want to be able to receive both types of requests
+def login():
+	if request.method == 'POST':
+
+		# get from fields
+		username = request.form['username']
+		password_candidate = request.form['password']
+
+		# create cursor
+		cur = mysql.connection.cursor()
+
+		# get user by Username
+		result = cur.execute("SELECT * FROM users WHERE username = %s", [username])
+
+		if result > 0:   # if there's any rows found
+			# get hash
+			data = cur.fetchone()   # only fetches the first username matching username variable
+			password = data['password']
+
+			# compare Passwords
+			if sha256_crypt.verify(password_candidate, password):
+				#app.logger.info('PASSWORD MATCHED')   # how you log stuff to the bash console
+
+				# create session variable if successful Login
+				session['logged_in'] = True
+				session['username'] = username # comes from the form
+
+				flash('You are now logged in', 'success')
+				return redirect(url_for('dashboard'))   # redirects to a different endpoint (python function)
+			else:
+				#app.logger.info('PASSWORD NOT MATCHED')
+				error = 'Invalid password!'
+				return render_template('login.html', error=error)
+
+			# close connection (to database)
+			cur.close()
+
+		else:
+			#app.logger.info('NO USER')
+			error = 'Username not found!'
+			return render_template('login.html', error=error)
+
+	return render_template('login.html')   # this is rendered when you first go to this endpoint
+
+# check if user logged in, this decorator can then be used an any route!!!!
+def is_logged_in(f):
+	@wraps(f)
+	def wrap(*args, **kwargs):   # this line means that all the arguments of original function should be returned
+		if 'logged_in' in session:
+			return f(*args, **kwargs)
+		else:
+			flash('Unauthorized, please log in.', 'danger')
+			return redirect(url_for('login'))
+	return wrap
+
+
+# User logout
+@app.route('/logout')
+@is_logged_in   # wrapper that requires user to be logged in to access url
+def logout():
+	session.clear()
+	flash('You are now logged out', 'success')
+	return redirect(url_for('index'))
+
+# dashboard
+@app.route('/dashboard')
+@is_logged_in   # wrapper that requires user to be logged in to access url
+def dashboard():
+	return render_template('dashboard.html')
 
 
 # if this condition met this script will be executed

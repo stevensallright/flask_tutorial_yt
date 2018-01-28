@@ -5,3 +5,12 @@
     {% endfor %}
   {% endif %}
 {% endwith %}
+
+
+{% if error %}   <!-- checks if error variable is passed into render_template function -->
+  <div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+{% if msg %}   <!-- checks if msg variable is passed into render_template function -->
+  <div class="alert alert-success">{{ msg }}</div>
+{% endif %}

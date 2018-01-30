@@ -58,7 +58,7 @@ def articles():
 		return render_template('articles.html', msg=msg)
 
 
-# create a route for article linke
+# create a route for article link
 @app.route('/article/<string:id>/')   # <> indicates a dynamic value
 def article(id):
 	# create cursor
@@ -237,6 +237,71 @@ def add_article():
 		return redirect(url_for('dashboard'))
 
 	return render_template('add_article.html', form=form)
+
+# edit article
+@app.route('/edit_article/<string:id>', methods=['GET', 'POST'])
+@is_logged_in   # wrapper that requires user to be logged in to access url
+def edit_article(id):   # need to pass in ID as parameter
+
+	# need to get article using ID and then fill the form with it
+
+	# create cursor
+	cur = mysql.connection.cursor()
+
+	# get the article by id
+	result = cur.execute("SELECT * FROM articles WHERE id = %s", [id])
+
+	article = cur.fetchone()
+
+	# get form
+	form = ArticleForm(request.form)
+
+	# populate article form fields
+	form.title.data = article['title']
+	form.body.data = article['body']
+
+	if request.method == 'POST' and form.validate():
+		title = request.form['title']
+		body = request.form['body']
+
+		# create cursor
+		cur = mysql.connection.cursor()
+
+		# execute (update not insert)
+		cur.execute("UPDATE articles SET title = %s, body = %s WHERE id = %s", (title, body, id))
+
+		# commit changes to db
+		mysql.connection.commit()
+
+		# close cursor
+		cur.close()
+
+		flash('Article updated', 'success')
+
+		return redirect(url_for('dashboard'))
+
+	return render_template('edit_article.html', form=form)
+
+
+# delete article
+@app.route('/delete_article/<string:id>', methods=['POST'])
+@is_logged_in   # wrapper that requires user to be logged in to access url
+def delete_article(id):
+	# create cursor
+	cur = mysql.connection.cursor()
+
+	# execute
+	cur.execute("DELETE FROM articles WHERE id = %s", [id])
+
+	# commit changes to db
+	mysql.connection.commit()
+
+	# close cursor
+	cur.close()
+
+	flash('Article updated', 'success')
+
+	return redirect(url_for('dashboard'))
 
 # if this condition met this script will be executed
 if __name__ == '__main__':

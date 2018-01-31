@@ -284,7 +284,7 @@ def edit_article(id):   # need to pass in ID as parameter
 
 
 # delete article
-@app.route('/delete_article/<string:id>', methods=['POST'])
+@app.route('/delete_article/<string:id>', methods=['POST'])   # only want POST here
 @is_logged_in   # wrapper that requires user to be logged in to access url
 def delete_article(id):
 	# create cursor
